@@ -10,15 +10,14 @@ class AdzanActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_adzan)
 
-        val jadwal = findViewById<TextView>(R.id.txtJadwal)
+        val txt = findViewById<TextView>(R.id.txtJadwal)
 
-        jadwal.text =
-            """
+        txt.text = """
             Subuh : 04:45
             Dzuhur : 12:05
             Ashar : 15:20
             Maghrib : 18:10
             Isya : 19:20
-            """.trimIndent()
+        """.trimIndent()
     }
 }
