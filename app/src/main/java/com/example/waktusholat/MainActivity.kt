@@ -9,28 +9,22 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        try {
-            setContentView(R.layout.activity_main)
+        val btnAdzan = findViewById<View>(R.id.btnAdzan)
+        val btnTasbih = findViewById<View>(R.id.btnTasbih)
+        val btnKiblat = findViewById<View>(R.id.btnKiblat)
 
-            val btnAdzan = findViewById<View>(R.id.btnAdzan)
-            val btnTasbih = findViewById<View>(R.id.btnTasbih)
-            val btnKiblat = findViewById<View>(R.id.btnKiblat)
+        btnAdzan.setOnClickListener {
+            startActivity(Intent(this, AdzanActivity::class.java))
+        }
 
-            btnAdzan.setOnClickListener {
-                startActivity(Intent(this, AdzanActivity::class.java))
-            }
+        btnTasbih.setOnClickListener {
+            startActivity(Intent(this, TasbihActivity::class.java))
+        }
 
-            btnTasbih.setOnClickListener {
-                startActivity(Intent(this, TasbihActivity::class.java))
-            }
-
-            btnKiblat.setOnClickListener {
-                startActivity(Intent(this, KiblatActivity::class.java))
-            }
-
-        } catch (e: Exception) {
-            e.printStackTrace()
+        btnKiblat.setOnClickListener {
+            startActivity(Intent(this, KiblatActivity::class.java))
         }
     }
 }
