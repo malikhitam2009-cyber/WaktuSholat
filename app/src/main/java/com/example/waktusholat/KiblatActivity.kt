@@ -15,7 +15,17 @@ class KiblatActivity : AppCompatActivity() {
 
         // INI YANG PENTING
         web.webViewClient = WebViewClient()
+        class KiblatActivity : AppCompatActivity() {
 
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate(savedInstanceState)
+                setContentView(R.layout.activity_kiblat)
+
+                val web = findViewById<WebView>(R.id.webKiblat)
+                web.settings.javaScriptEnabled = true
+                web.loadUrl("https://qiblafinder.withgoogle.com/")
+            }
+        }
         web.settings.javaScriptEnabled = true
 
         web.loadUrl("https://qiblafinder.withgoogle.com/")

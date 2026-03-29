@@ -1,86 +1,91 @@
 package com.example.waktusholat
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.location.Geocoder
 import android.os.Bundle
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import com.google.android.gms.location.*
-import retrofit2.*
-import retrofit2.converter.gson.GsonConverterFactory
+import com.example.waktusholat.api.RetrofitClient
+import com.example.waktusholat.api.ResponseJadwal
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import java.text.SimpleDateFormat
 import java.util.*
 
 class AdzanActivity : AppCompatActivity() {
 
-    lateinit var fusedLocationClient: FusedLocationProviderClient
-    lateinit var api: ApiService
+    private lateinit var txtSubuh: TextView
+    private lateinit var txtDzuhur: TextView
+    private lateinit var txtAshar: TextView
+    private lateinit var txtMaghrib: TextView
+    private lateinit var txtIsya: TextView
+    private lateinit var txtLokasi: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_adzan)
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        // 🔥 INIT VIEW (ANTI NULL)
+        txtSubuh = findViewById(R.id.txtSubuh)
+        txtDzuhur = findViewById(R.id.txtDzuhur)
+        txtAshar = findViewById(R.id.txtAshar)
+        txtMaghrib = findViewById(R.id.txtMaghrib)
+        txtIsya = findViewById(R.id.txtIsya)
+        txtLokasi = findViewById(R.id.txtLokasi)
 
-        val retrofit = Retrofit.Builder()
-            .baseUrl("https://api.aladhan.com/v1/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
+        // 🔥 AMBIL DATA DARI INTENT
+        val kota = intent.getStringExtra("KOTA")
 
-        api = retrofit.create(ApiService::class.java)
-
-        getLocation()
-    }
-
-    private fun getLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-
-            ActivityCompat.requestPermissions(this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 1)
+        if (kota.isNullOrEmpty()) {
+            txtLokasi.text = "Kota tidak ditemukan"
             return
         }
 
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
-                val lat = location.latitude
-                val lon = location.longitude
+        txtLokasi.text = "Memuat..."
 
-                ambilJadwal(lat, lon)
-                tampilkanKota(lat, lon)
-            } else {
-                Toast.makeText(this, "Lokasi tidak ditemukan", Toast.LENGTH_SHORT).show()
-            }
-        }
+        // 🔥 TANGGAL HARI INI
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val tanggal = sdf.format(Date())
+
+        getJadwal(kota, tanggal)
     }
 
-    private fun tampilkanKota(lat: Double, lon: Double) {
-        val geo = Geocoder(this, Locale.getDefault())
-        val alamat = geo.getFromLocation(lat, lon, 1)
+    private fun getJadwal(kota: String, tanggal: String) {
 
-        if (!alamat.isNullOrEmpty()) {
-            findViewById<TextView>(R.id.txtKota).text = alamat[0].locality
-        }
-    }
+        RetrofitClient.instance.getJadwal(kota, tanggal)
+            .enqueue(object : Callback<ResponseJadwal> {
 
-    private fun ambilJadwal(lat: Double, lon: Double) {
-        api.getJadwal(lat, lon).enqueue(object : Callback<ResponseJadwal> {
+                override fun onResponse(
+                    call: Call<ResponseJadwal>,
+                    response: Response<ResponseJadwal>
+                ) {
 
-            override fun onResponse(call: Call<ResponseJadwal>, response: Response<ResponseJadwal>) {
-                val t = response.body()?.data?.timings
+                    if (!response.isSuccessful) {
+                        txtLokasi.text = "Gagal ambil data"
+                        return
+                    }
 
-                findViewById<TextView>(R.id.txtSubuh).text = t?.Fajr
-                findViewById<TextView>(R.id.txtDzuhur).text = t?.Dhuhr
-                findViewById<TextView>(R.id.txtAshar).text = t?.Asr
-                findViewById<TextView>(R.id.txtMaghrib).text = t?.Maghrib
-                findViewById<TextView>(R.id.txtIsya).text = t?.Isha
-            }
+                    val body = response.body()
+                    if (body == null) {
+                        txtLokasi.text = "Data kosong"
+                        return
+                    }
 
-            override fun onFailure(call: Call<ResponseJadwal>, t: Throwable) {
-                Toast.makeText(this@AdzanActivity, "Gagal ambil data", Toast.LENGTH_SHORT).show()
-            }
-        })
+                    val jadwal = body.data.jadwal
+
+                    // 🔥 SET TEXT (AMAN)
+                    txtSubuh.text = jadwal.subuh
+                    txtDzuhur.text = jadwal.dzuhur
+                    txtAshar.text = jadwal.ashar
+                    txtMaghrib.text = jadwal.maghrib
+                    txtIsya.text = jadwal.isya
+
+                    txtLokasi.text = "Jadwal Hari Ini"
+                }
+
+                override fun onFailure(call: Call<ResponseJadwal>, t: Throwable) {
+                    txtLokasi.text = "Tidak ada koneksi"
+                    t.printStackTrace()
+                }
+            })
     }
 }

@@ -2,7 +2,7 @@ package com.example.waktusholat
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -11,12 +11,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val btnAdzan = findViewById<View>(R.id.btnAdzan)
-        val btnTasbih = findViewById<View>(R.id.btnTasbih)
-        val btnKiblat = findViewById<View>(R.id.btnKiblat)
+        val btnAdzan = findViewById<Button>(R.id.btnAdzan)
+        val btnTasbih = findViewById<Button>(R.id.btnTasbih)
+        val btnKiblat = findViewById<Button>(R.id.btnKiblat)
 
         btnAdzan.setOnClickListener {
-            startActivity(Intent(this, AdzanActivity::class.java))
+            startActivity(Intent(this, PilihKotaActivity::class.java))
         }
 
         btnTasbih.setOnClickListener {

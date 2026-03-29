@@ -1,101 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_main">
+    android:orientation="vertical"
+    android:background="@drawable/bg_main"
+    android:gravity="center"
+    android:padding="20dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:text="Waktu Sholat"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="40dp"/>
 
-        <!-- TITLE -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Waktu Sholat"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:layout_marginBottom="20dp"/>
+    <Button
+        android:id="@+id/btnAdzan"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:text="Pengingat Adzan"
+        android:backgroundTint="#2E7D32"
+        android:textColor="#FFFFFF"/>
 
-        <!-- ADZAN -->
-        <LinearLayout
-            android:id="@+id/btnAdzan"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:background="@drawable/card_bg"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="15dp">
+    <Button
+        android:id="@+id/btnTasbih"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:text="Tasbih Digital"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#2E7D32"
+        android:textColor="#FFFFFF"/>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🕌"
-                android:textSize="24sp"
-                android:layout_marginEnd="15dp"/>
+    <Button
+        android:id="@+id/btnKiblat"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:text="Arah Kiblat"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="#2E7D32"
+        android:textColor="#FFFFFF"/>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Pengingat Adzan"
-                android:textSize="18sp"
-                android:textColor="#000000"/>
-        </LinearLayout>
-
-        <!-- TASBIH -->
-        <LinearLayout
-            android:id="@+id/btnTasbih"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:background="@drawable/card_bg"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="16dp"
-            android:layout_marginBottom="15dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📿"
-                android:textSize="24sp"
-                android:layout_marginEnd="15dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tasbih Digital"
-                android:textSize="18sp"
-                android:textColor="#000000"/>
-        </LinearLayout>
-
-        <!-- KIBLAT -->
-        <LinearLayout
-            android:id="@+id/btnKiblat"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:background="@drawable/card_bg"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🧭"
-                android:textSize="24sp"
-                android:layout_marginEnd="15dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Arah Kiblat"
-                android:textSize="18sp"
-                android:textColor="#000000"/>
-        </LinearLayout>
-
-    </LinearLayout>
-</ScrollView>
+</LinearLayout>

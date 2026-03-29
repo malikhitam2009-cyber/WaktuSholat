@@ -1,15 +1,14 @@
-package com.example.waktusholat
+package com.example.waktusholat.api
 
 import retrofit2.Call
 import retrofit2.http.GET
-import retrofit2.http.Query
+import retrofit2.http.Path
 
 interface ApiService {
 
-    @GET("timings")
+    @GET("sholat/jadwal/{kota}/{tanggal}")
     fun getJadwal(
-        @Query("latitude") lat: Double,
-        @Query("longitude") lon: Double,
-        @Query("method") method: Int = 2
+        @Path("kota") kota: String,
+        @Path("tanggal") tanggal: String
     ): Call<ResponseJadwal>
 }
