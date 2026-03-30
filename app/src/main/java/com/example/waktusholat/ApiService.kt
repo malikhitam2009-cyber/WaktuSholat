@@ -11,4 +11,7 @@ interface ApiService {
         @Path("kota") kota: String,
         @Path("tanggal") tanggal: String
     ): Call<ResponseJadwal>
+
+    @GET("sholat/kota/semua")
+    fun getKota(): Call<ResponseKota>
 }
