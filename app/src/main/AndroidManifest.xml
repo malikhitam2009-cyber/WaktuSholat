@@ -21,7 +21,9 @@
         android:allowBackup="true"
         android:label="@string/app_name"
         android:theme="@style/Theme.WaktuSholat"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:icon="@drawable/ic_logo"
+        android:roundIcon="@drawable/ic_logo">
 
         <!-- RECEIVER ADZAN -->
         <receiver
@@ -37,7 +39,6 @@
         </receiver>
         -->
 
-        <!-- ACTIVITY -->
         <!-- ACTIVITY -->
         <activity android:name=".PilihKotaActivity"/>
         <activity android:name=".AdzanActivity"/>

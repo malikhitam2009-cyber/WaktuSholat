@@ -7,14 +7,13 @@
     android:gravity="center"
     android:padding="20dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Waktu Sholat"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="40dp"/>
+    <ImageView
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:src="@drawable/ic_logo"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="Logo"
+        android:scaleType="fitCenter"/>
 
     <Button
         android:id="@+id/btnAdzan"
