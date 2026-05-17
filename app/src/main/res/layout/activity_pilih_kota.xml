@@ -1,65 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_main">
+    android:orientation="vertical"
+    android:background="@drawable/bg_main"
+    android:padding="16dp">
 
-    <LinearLayout
+    <!-- TITLE -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pilih Kota"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- SEARCH -->
+    <EditText
+        android:id="@+id/edtSearch"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:hint="Cari kota..."
+        android:textColor="#000000"
+        android:textColorHint="#DDDDDD"
+        android:padding="14dp"
+        android:background="@android:drawable/edit_text"
+        android:layout_marginBottom="16dp"/>
 
-        <!-- TITLE -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pilih Kota"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:layout_marginBottom="20dp"/>
+    <!-- SCROLL -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-        <!-- BUTTON LIST -->
-        <Button
+        <LinearLayout
+            android:id="@+id/containerKota"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Jakarta"
-            android:tag="1301"
-            android:onClick="pilihKota"/>
+            android:orientation="vertical"/>
 
-        <Button
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Bandung"
-            android:tag="1307"
-            android:onClick="pilihKota"
-            android:layout_marginTop="10dp"/>
+    </ScrollView>
 
-        <Button
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Surabaya"
-            android:tag="1311"
-            android:onClick="pilihKota"
-            android:layout_marginTop="10dp"/>
-
-        <Button
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Yogyakarta"
-            android:tag="1304"
-            android:onClick="pilihKota"
-            android:layout_marginTop="10dp"/>
-
-        <Button
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Medan"
-            android:tag="1201"
-            android:onClick="pilihKota"
-            android:layout_marginTop="10dp"/>
-
-    </LinearLayout>
-
-</ScrollView>
+</LinearLayout>

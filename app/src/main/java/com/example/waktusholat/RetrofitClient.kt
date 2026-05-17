@@ -8,6 +8,7 @@ object RetrofitClient {
     private const val BASE_URL = "https://api.myquran.com/v2/"
 
     val instance: ApiService by lazy {
+
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .addConverterFactory(GsonConverterFactory.create())
