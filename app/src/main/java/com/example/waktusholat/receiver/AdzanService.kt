@@ -4,11 +4,16 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
+import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.example.waktusholat.R
 
@@ -16,37 +21,42 @@ class AdzanService : Service() {
 
     private var mediaPlayer: MediaPlayer? = null
 
-    override fun onStartCommand(
-        intent: Intent?,
-        flags: Int,
-        startId: Int
-    ): Int {
-
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val jenis = intent?.getStringExtra("JENIS_SHOLAT")?.lowercase() ?: "sholat"
+        Log.d("ADZAN_SERVICE", "Service Started for: $jenis")
+        
+        // Buat notif duluan supaya gak di-kill sistem
         createNotification()
 
         try {
             mediaPlayer?.release()
 
-            val jenis = intent?.getStringExtra("JENIS_SHOLAT")?.lowercase()
-
             val audioRes = when (jenis) {
                 "subuh" -> R.raw.adzan2
                 "maghrib" -> R.raw.adzan_mekkah
-                "dzuhur", "ashar", "isya" -> R.raw.adzan
                 else -> R.raw.adzan
             }
 
+            // Gunakan USAGE_MEDIA biar ngikut volume HP biasa (musik/video)
             val attributes = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build()
 
             mediaPlayer = MediaPlayer.create(this, audioRes, attributes, 0)
+            
+            if (mediaPlayer == null) {
+                Log.e("ADZAN_SERVICE", "Gagal create MediaPlayer!")
+                stopSelf()
+                return START_NOT_STICKY
+            }
 
             mediaPlayer?.apply {
+                // Jaga CPU tetep hidup sampe adzan beres
+                setWakeMode(applicationContext, PowerManager.PARTIAL_WAKE_LOCK)
                 setVolume(1.0f, 1.0f)
-                isLooping = false
                 start()
+                
                 setOnCompletionListener {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
@@ -54,7 +64,8 @@ class AdzanService : Service() {
             }
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("ADZAN_SERVICE", "Error: ${e.message}")
+            stopSelf()
         }
 
         return START_NOT_STICKY
@@ -65,21 +76,30 @@ class AdzanService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Adzan",
+                "Jadwal Sholat",
                 NotificationManager.IMPORTANCE_HIGH
-            )
+            ).apply {
+                setSound(null, null)
+                enableVibration(true)
+            }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
 
-        val notification: Notification = NotificationCompat.Builder(this, channelId)
+        val notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle("Waktu Sholat")
-            .setContentText("Adzan sedang diputar")
+            .setContentText("Adzan sedang berkumandang...")
             .setSmallIcon(R.drawable.ic_logo)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)
             .build()
 
-        startForeground(1, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        } else {
+            startForeground(1, notification)
+        }
     }
 
     override fun onDestroy() {

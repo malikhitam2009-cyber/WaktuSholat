@@ -6,8 +6,11 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Geocoder
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.util.Log
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -39,7 +42,6 @@ class AdzanActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_adzan)
 
-        // Init Views
         txtLokasi = findViewById(R.id.txtLokasi)
         txtSubuh = findViewById(R.id.txtSubuh)
         txtDzuhur = findViewById(R.id.txtDzuhur)
@@ -49,38 +51,47 @@ class AdzanActivity : AppCompatActivity() {
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        checkLocationPermission()
+        checkAndRequestPermissions()
     }
 
-    private fun checkLocationPermission() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                REQUEST_LOCATION_PERMISSION
-            )
+    private fun checkAndRequestPermissions() {
+        val permissions = mutableListOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        val needsPermission = permissions.filter {
+            ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (needsPermission.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, needsPermission.toTypedArray(), REQUEST_LOCATION_PERMISSION)
+        } else {
+            checkExactAlarmPermission()
+        }
+    }
+
+    private fun checkExactAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Toast.makeText(this, "Mohon izinkan 'Alarms & Reminders' agar adzan tepat waktu", Toast.LENGTH_LONG).show()
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                startActivity(intent)
+            } else {
+                getUserLocation()
+            }
         } else {
             getUserLocation()
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_LOCATION_PERMISSION) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getUserLocation()
-            } else {
-                Toast.makeText(this, "Izin lokasi ditolak, menggunakan Jakarta", Toast.LENGTH_SHORT).show()
-                fetchJadwalByCityName("Jakarta")
-            }
+            checkExactAlarmPermission()
         }
     }
 
@@ -89,13 +100,17 @@ class AdzanActivity : AppCompatActivity() {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
                     val geocoder = Geocoder(this, Locale.getDefault())
-                    val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
-                    if (!addresses.isNullOrEmpty()) {
-                        val cityName = addresses[0].subAdminArea ?: addresses[0].locality ?: "Jakarta"
-                        // subAdminArea biasanya nama Kabupaten/Kota di Indonesia
-                        fetchJadwalByCityName(cityName)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        geocoder.getFromLocation(location.latitude, location.longitude, 1) { addresses ->
+                            if (addresses.isNotEmpty()) {
+                                val cityName = addresses[0].subAdminArea ?: addresses[0].locality ?: "Jakarta"
+                                runOnUiThread { fetchJadwalByCityName(cityName) }
+                            }
+                        }
                     } else {
-                        fetchJadwalByCityName("Jakarta")
+                        val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                        val cityName = addresses?.getOrNull(0)?.subAdminArea ?: "Jakarta"
+                        fetchJadwalByCityName(cityName)
                     }
                 } else {
                     fetchJadwalByCityName("Jakarta")
@@ -108,25 +123,17 @@ class AdzanActivity : AppCompatActivity() {
 
     private fun fetchJadwalByCityName(cityName: String) {
         val cleanName = cityName.replace("Kota ", "").replace("Kabupaten ", "").trim()
-        
         RetrofitClient.instance.cariKota(cleanName).enqueue(object : Callback<ResponseCariKota> {
             override fun onResponse(call: Call<ResponseCariKota>, response: Response<ResponseCariKota>) {
-                val kotaList = response.body()?.data
-                if (!kotaList.isNullOrEmpty()) {
-                    val cityId = kotaList[0].id
-                    val locationLabel = kotaList[0].lokasi
-                    txtLokasi.text = locationLabel
-                    
-                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    getJadwal(cityId, sdf.format(Date()))
-                } else {
-                    // Fallback jika nama kota tidak ditemukan di API
-                    if (cleanName != "Jakarta") fetchJadwalByCityName("Jakarta")
+                val data = response.body()?.data
+                if (!data.isNullOrEmpty()) {
+                    val selected = data.find { it.lokasi.contains("KOTA", true) } ?: data[0]
+                    txtLokasi.text = selected.lokasi
+                    getJadwal(selected.id, SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
                 }
             }
-
             override fun onFailure(call: Call<ResponseCariKota>, t: Throwable) {
-                Toast.makeText(this@AdzanActivity, "Gagal mencari kota", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@AdzanActivity, "Gagal Sinkron Jadwal", Toast.LENGTH_SHORT).show()
             }
         })
     }
@@ -134,65 +141,47 @@ class AdzanActivity : AppCompatActivity() {
     private fun getJadwal(idKota: String, tanggal: String) {
         RetrofitClient.instance.getJadwal(idKota, tanggal).enqueue(object : Callback<ResponseJadwal> {
             override fun onResponse(call: Call<ResponseJadwal>, response: Response<ResponseJadwal>) {
-                if (response.isSuccessful) {
-                    val jadwal = response.body()?.data?.jadwal ?: return
-                    
-                    txtSubuh.text = jadwal.subuh
-                    txtDzuhur.text = jadwal.dzuhur
-                    txtAshar.text = jadwal.ashar
-                    txtMaghrib.text = jadwal.maghrib
-                    txtIsya.text = jadwal.isya
+                val jadwal = response.body()?.data?.jadwal ?: return
+                txtSubuh.text = jadwal.subuh
+                txtDzuhur.text = jadwal.dzuhur
+                txtAshar.text = jadwal.ashar
+                txtMaghrib.text = jadwal.maghrib
+                txtIsya.text = jadwal.isya
 
-                    setAlarm(jadwal.subuh, 1, "subuh")
-                    setAlarm(jadwal.dzuhur, 2, "dzuhur")
-                    setAlarm(jadwal.ashar, 3, "ashar")
-                    setAlarm(jadwal.maghrib, 4, "maghrib")
-                    setAlarm(jadwal.isya, 5, "isya")
-                }
+                setAlarm(jadwal.subuh, 1, "subuh")
+                setAlarm(jadwal.dzuhur, 2, "dzuhur")
+                setAlarm(jadwal.ashar, 3, "ashar")
+                setAlarm(jadwal.maghrib, 4, "maghrib")
+                setAlarm(jadwal.isya, 5, "isya")
             }
-
-            override fun onFailure(call: Call<ResponseJadwal>, t: Throwable) {
-                Toast.makeText(this@AdzanActivity, "Koneksi bermasalah", Toast.LENGTH_SHORT).show()
-            }
+            override fun onFailure(call: Call<ResponseJadwal>, t: Throwable) {}
         })
     }
 
     private fun setAlarm(jam: String, requestCode: Int, jenis: String) {
         try {
-            val cleanJam = jam.take(5).trim()
-            val parts = cleanJam.split(":")
-            if (parts.size < 2) return
-
-            val calendar = Calendar.getInstance()
-            calendar.set(Calendar.HOUR_OF_DAY, parts[0].toInt())
-            calendar.set(Calendar.MINUTE, parts[1].toInt())
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
+            val parts = jam.take(5).split(":")
+            val calendar = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, parts[0].toInt())
+                set(Calendar.MINUTE, parts[1].toInt())
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
 
             if (calendar.timeInMillis <= System.currentTimeMillis()) return
 
             val intent = Intent(this, AdzanReceiver::class.java).apply {
                 putExtra("JENIS_SHOLAT", jenis)
+                action = "ACTION_ADZAN_$requestCode"
             }
 
-            val pendingIntent = PendingIntent.getBroadcast(
-                this, requestCode, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
+            val pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-                } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-                }
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.timeInMillis, pendingIntent)
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+            val alarmInfo = AlarmManager.AlarmClockInfo(calendar.timeInMillis, pendingIntent)
+            alarmManager.setAlarmClock(alarmInfo, pendingIntent)
+
+            Log.d("ALARM_SET", "Alarm $jenis set untuk ${calendar.time}")
+        } catch (e: Exception) { e.printStackTrace() }
     }
 }

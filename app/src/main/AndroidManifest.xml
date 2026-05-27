@@ -1,27 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- INTERNET -->
     <uses-permission android:name="android.permission.INTERNET"/>
-
-    <!-- LOCATION -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-
-    <!-- NOTIFICATION -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-
-    <!-- ALARM -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-
-    <!-- OPTIONAL -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 
+    <!-- IZIN KHUSUS ALARM BIAR GAK TELAT -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -31,18 +21,15 @@
         android:icon="@drawable/ic_logo"
         android:roundIcon="@drawable/ic_logo">
 
-        <!-- RECEIVER -->
         <receiver
             android:name=".receiver.AdzanReceiver"
             android:exported="false"/>
 
-        <!-- SERVICE -->
         <service
             android:name=".receiver.AdzanService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback"/>
 
-        <!-- ACTIVITY -->
         <activity android:name=".AdzanActivity"/>
         <activity android:name=".TasbihActivity"/>
         <activity android:name=".KiblatActivity"/>
@@ -50,14 +37,11 @@
         <activity
             android:name=".MainActivity"
             android:exported="true">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
         </activity>
 
     </application>
-
 </manifest>
