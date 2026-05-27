@@ -3,6 +3,7 @@ package com.example.waktusholat
 import android.Manifest
 import android.app.AlarmManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Geocoder
@@ -75,7 +76,6 @@ class AdzanActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
             if (!alarmManager.canScheduleExactAlarms()) {
-                Toast.makeText(this, "Mohon izinkan 'Alarms & Reminders' agar adzan tepat waktu", Toast.LENGTH_LONG).show()
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                     data = Uri.fromParts("package", packageName, null)
                 }
@@ -122,13 +122,31 @@ class AdzanActivity : AppCompatActivity() {
     }
 
     private fun fetchJadwalByCityName(cityName: String) {
-        val cleanName = cityName.replace("Kota ", "").replace("Kabupaten ", "").trim()
+        val isKota = cityName.contains("Kota", ignoreCase = true)
+        val isKab = cityName.contains("Kabupaten", ignoreCase = true)
+        
+        val cleanName = cityName.replace("Kota ", "", ignoreCase = true)
+            .replace("Kabupaten ", "", ignoreCase = true)
+            .trim()
+        
         RetrofitClient.instance.cariKota(cleanName).enqueue(object : Callback<ResponseCariKota> {
             override fun onResponse(call: Call<ResponseCariKota>, response: Response<ResponseCariKota>) {
                 val data = response.body()?.data
                 if (!data.isNullOrEmpty()) {
-                    val selected = data.find { it.lokasi.contains("KOTA", true) } ?: data[0]
+                    val selected = if (isKota) {
+                        data.find { it.lokasi.contains("KOTA", true) } ?: data[0]
+                    } else if (isKab) {
+                        data.find { it.lokasi.contains("KAB", true) } ?: data[0]
+                    } else {
+                        data[0]
+                    }
+                    
                     txtLokasi.text = selected.lokasi
+                    
+                    // SIMPAN ID KOTA UNTUK BOOT RECEIVER
+                    val sharedPref = getSharedPreferences("WAKTU_SHOLAT", Context.MODE_PRIVATE)
+                    sharedPref.edit().putString("id_kota", selected.id).apply()
+
                     getJadwal(selected.id, SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
                 }
             }
@@ -141,18 +159,21 @@ class AdzanActivity : AppCompatActivity() {
     private fun getJadwal(idKota: String, tanggal: String) {
         RetrofitClient.instance.getJadwal(idKota, tanggal).enqueue(object : Callback<ResponseJadwal> {
             override fun onResponse(call: Call<ResponseJadwal>, response: Response<ResponseJadwal>) {
-                val jadwal = response.body()?.data?.jadwal ?: return
-                txtSubuh.text = jadwal.subuh
-                txtDzuhur.text = jadwal.dzuhur
-                txtAshar.text = jadwal.ashar
-                txtMaghrib.text = jadwal.maghrib
-                txtIsya.text = jadwal.isya
+                if (response.isSuccessful) {
+                    val jadwal = response.body()?.data?.jadwal ?: return
+                    txtSubuh.text = jadwal.subuh
+                    txtDzuhur.text = jadwal.dzuhur
+                    txtAshar.text = jadwal.ashar
+                    txtMaghrib.text = jadwal.maghrib
+                    txtIsya.text = jadwal.isya
 
-                setAlarm(jadwal.subuh, 1, "subuh")
-                setAlarm(jadwal.dzuhur, 2, "dzuhur")
-                setAlarm(jadwal.ashar, 3, "ashar")
-                setAlarm(jadwal.maghrib, 4, "maghrib")
-                setAlarm(jadwal.isya, 5, "isya")
+                    // SET ALARM SESUAI URUTAN WAKTU SHOLAT
+                    setAlarm(jadwal.subuh, 1, "subuh")
+                    setAlarm(jadwal.dzuhur, 2, "dzuhur")
+                    setAlarm(jadwal.ashar, 3, "ashar")
+                    setAlarm(jadwal.maghrib, 4, "maghrib")
+                    setAlarm(jadwal.isya, 5, "isya")
+                }
             }
             override fun onFailure(call: Call<ResponseJadwal>, t: Throwable) {}
         })
@@ -160,7 +181,7 @@ class AdzanActivity : AppCompatActivity() {
 
     private fun setAlarm(jam: String, requestCode: Int, jenis: String) {
         try {
-            val parts = jam.take(5).split(":")
+            val parts = jam.trim().take(5).split(":")
             val calendar = Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, parts[0].toInt())
                 set(Calendar.MINUTE, parts[1].toInt())
@@ -168,7 +189,10 @@ class AdzanActivity : AppCompatActivity() {
                 set(Calendar.MILLISECOND, 0)
             }
 
-            if (calendar.timeInMillis <= System.currentTimeMillis()) return
+            // LOGIKA H+1: Jika waktu sholat sudah lewat hari ini, pasang otomatis untuk BESOK
+            if (calendar.timeInMillis <= System.currentTimeMillis()) {
+                calendar.add(Calendar.DAY_OF_YEAR, 1)
+            }
 
             val intent = Intent(this, AdzanReceiver::class.java).apply {
                 putExtra("JENIS_SHOLAT", jenis)
@@ -178,10 +202,11 @@ class AdzanActivity : AppCompatActivity() {
             val pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
 
+            // Gunakan AlarmClock agar presisi dan ikon jam muncul di status bar
             val alarmInfo = AlarmManager.AlarmClockInfo(calendar.timeInMillis, pendingIntent)
             alarmManager.setAlarmClock(alarmInfo, pendingIntent)
 
-            Log.d("ALARM_SET", "Alarm $jenis set untuk ${calendar.time}")
+            Log.d("ALARM_SET", "Alarm $jenis SUKSES dipasang untuk: ${calendar.time}")
         } catch (e: Exception) { e.printStackTrace() }
     }
 }
