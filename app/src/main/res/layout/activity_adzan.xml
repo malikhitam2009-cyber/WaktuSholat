@@ -213,28 +213,6 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- BUTTON SET UTAMA -->
-        <Button
-            android:id="@+id/btnSetUtama"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Jadikan Kota Utama"
-            android:layout_marginTop="24dp"
-            android:backgroundTint="#2E7D32"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold" />
-
-        <!-- BUTTON GANTI KOTA -->
-        <Button
-            android:id="@+id/btnGantiKota"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Lihat Kota Lain"
-            android:layout_marginTop="14dp"
-            android:backgroundTint="#1565C0"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold" />
-
     </LinearLayout>
 
 </ScrollView>

@@ -12,16 +12,36 @@ class AdzanReceiver : BroadcastReceiver() {
         intent: Intent
     ) {
 
+        val jenis =
+            intent.getStringExtra(
+                "JENIS_SHOLAT"
+            )
+
         val serviceIntent =
-            Intent(context, AdzanService::class.java)
+            Intent(
+                context,
+                AdzanService::class.java
+            )
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        serviceIntent.putExtra(
+            "JENIS_SHOLAT",
+            jenis
+        )
 
-            context.startForegroundService(serviceIntent)
+        if (
+            Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.O
+        ) {
+
+            context.startForegroundService(
+                serviceIntent
+            )
 
         } else {
 
-            context.startService(serviceIntent)
+            context.startService(
+                serviceIntent
+            )
         }
     }
 }

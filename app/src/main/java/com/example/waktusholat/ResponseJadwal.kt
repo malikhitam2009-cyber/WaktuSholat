@@ -1,4 +1,4 @@
-package com.example.waktusholat.api
+package com.example.waktusholat
 
 data class ResponseJadwal(
     val data: DataJadwal

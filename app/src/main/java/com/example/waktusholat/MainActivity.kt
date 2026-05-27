@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(
                 Intent(
                     this,
-                    PilihKotaActivity::class.java
+                    AdzanActivity::class.java
                 )
             )
         }
