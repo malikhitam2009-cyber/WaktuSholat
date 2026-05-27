@@ -37,9 +37,9 @@ class AdzanService : Service() {
                 else -> R.raw.adzan
             }
 
-            // Gunakan USAGE_MEDIA biar ngikut volume HP biasa (musik/video)
+            // Gunakan USAGE_ALARM biar ngikut volume ALARM HP (ikon jam)
             val attributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build()
 
