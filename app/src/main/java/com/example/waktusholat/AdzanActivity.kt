@@ -10,6 +10,8 @@ import android.location.Geocoder
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.widget.TextView
@@ -39,6 +41,9 @@ class AdzanActivity : AppCompatActivity() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val REQUEST_LOCATION_PERMISSION = 100
 
+    // Satpam timeout biar gak stuck
+    private var locationFound = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_adzan)
@@ -51,6 +56,14 @@ class AdzanActivity : AppCompatActivity() {
         txtIsya = findViewById(R.id.txtIsya)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // Jalankan satpam timeout: 4 detik gak dapet lokasi, paksa Jakarta
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!locationFound) {
+                Log.d("ADZAN_APP", "Location timeout, using Jakarta fallback")
+                fetchJadwalByCityName("Jakarta")
+            }
+        }, 4000)
 
         checkAndRequestPermissions()
     }
@@ -99,12 +112,15 @@ class AdzanActivity : AppCompatActivity() {
         try {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
+                    locationFound = true
                     val geocoder = Geocoder(this, Locale.getDefault())
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         geocoder.getFromLocation(location.latitude, location.longitude, 1) { addresses ->
                             if (addresses.isNotEmpty()) {
                                 val cityName = addresses[0].subAdminArea ?: addresses[0].locality ?: "Jakarta"
                                 runOnUiThread { fetchJadwalByCityName(cityName) }
+                            } else {
+                                runOnUiThread { fetchJadwalByCityName("Jakarta") }
                             }
                         }
                     } else {
@@ -113,8 +129,11 @@ class AdzanActivity : AppCompatActivity() {
                         fetchJadwalByCityName(cityName)
                     }
                 } else {
+                    // Jika lastLocation null, biarkan timeout yang ambil alih atau langsung Jakarta
                     fetchJadwalByCityName("Jakarta")
                 }
+            }.addOnFailureListener {
+                fetchJadwalByCityName("Jakarta")
             }
         } catch (e: SecurityException) {
             fetchJadwalByCityName("Jakarta")
@@ -122,38 +141,40 @@ class AdzanActivity : AppCompatActivity() {
     }
 
     private fun fetchJadwalByCityName(cityName: String) {
-        val isKota = cityName.contains("Kota", ignoreCase = true)
-        val isKab = cityName.contains("Kabupaten", ignoreCase = true)
-        
-        val cleanName = cityName.replace("Kota ", "", ignoreCase = true)
-            .replace("Kabupaten ", "", ignoreCase = true)
-            .trim()
-        
-        RetrofitClient.instance.cariKota(cleanName).enqueue(object : Callback<ResponseCariKota> {
+        // Logika khusus Jakarta agar ID pasti dapet (1301)
+        val searchName = if (cityName.contains("Jakarta", true)) "Jakarta" 
+                         else cityName.replace("Kota ", "").replace("Kabupaten ", "").trim()
+
+        if (searchName.isEmpty()) return
+
+        RetrofitClient.instance.cariKota(searchName).enqueue(object : Callback<ResponseCariKota> {
             override fun onResponse(call: Call<ResponseCariKota>, response: Response<ResponseCariKota>) {
                 val data = response.body()?.data
                 if (!data.isNullOrEmpty()) {
-                    val selected = if (isKota) {
-                        data.find { it.lokasi.contains("KOTA", true) } ?: data[0]
-                    } else if (isKab) {
-                        data.find { it.lokasi.contains("KAB", true) } ?: data[0]
-                    } else {
-                        data[0]
-                    }
-                    
-                    txtLokasi.text = selected.lokasi
-                    
-                    // SIMPAN ID KOTA UNTUK BOOT RECEIVER
-                    val sharedPref = getSharedPreferences("WAKTU_SHOLAT", Context.MODE_PRIVATE)
-                    sharedPref.edit().putString("id_kota", selected.id).apply()
-
-                    getJadwal(selected.id, SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()))
+                    val selected = data.find { it.lokasi.contains("KOTA", true) } ?: data[0]
+                    updateUIWithCity(selected.id, selected.lokasi)
+                } else {
+                    // Jika kota gak ketemu di API, paksa ke Jakarta
+                    if (searchName != "Jakarta") fetchJadwalByCityName("Jakarta")
+                    else updateUIWithCity("1301", "KOTA JAKARTA")
                 }
             }
+
             override fun onFailure(call: Call<ResponseCariKota>, t: Throwable) {
-                Toast.makeText(this@AdzanActivity, "Gagal Sinkron Jadwal", Toast.LENGTH_SHORT).show()
+                updateUIWithCity("1301", "KOTA JAKARTA")
             }
         })
+    }
+
+    private fun updateUIWithCity(idKota: String, namaLokasi: String) {
+        runOnUiThread {
+            txtLokasi.text = namaLokasi
+            val sharedPref = getSharedPreferences("WAKTU_SHOLAT", Context.MODE_PRIVATE)
+            sharedPref.edit().putString("id_kota", idKota).apply()
+            
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            getJadwal(idKota, sdf.format(Date()))
+        }
     }
 
     private fun getJadwal(idKota: String, tanggal: String) {
@@ -167,7 +188,6 @@ class AdzanActivity : AppCompatActivity() {
                     txtMaghrib.text = jadwal.maghrib
                     txtIsya.text = jadwal.isya
 
-                    // SET ALARM SESUAI URUTAN WAKTU SHOLAT
                     setAlarm(jadwal.subuh, 1, "subuh")
                     setAlarm(jadwal.dzuhur, 2, "dzuhur")
                     setAlarm(jadwal.ashar, 3, "ashar")
@@ -175,7 +195,9 @@ class AdzanActivity : AppCompatActivity() {
                     setAlarm(jadwal.isya, 5, "isya")
                 }
             }
-            override fun onFailure(call: Call<ResponseJadwal>, t: Throwable) {}
+            override fun onFailure(call: Call<ResponseJadwal>, t: Throwable) {
+                Log.e("ADZAN_APP", "Gagal tarik jadwal: ${t.message}")
+            }
         })
     }
 
@@ -189,7 +211,6 @@ class AdzanActivity : AppCompatActivity() {
                 set(Calendar.MILLISECOND, 0)
             }
 
-            // LOGIKA H+1: Jika waktu sholat sudah lewat hari ini, pasang otomatis untuk BESOK
             if (calendar.timeInMillis <= System.currentTimeMillis()) {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
@@ -201,12 +222,8 @@ class AdzanActivity : AppCompatActivity() {
 
             val pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
-
-            // Gunakan AlarmClock agar presisi dan ikon jam muncul di status bar
             val alarmInfo = AlarmManager.AlarmClockInfo(calendar.timeInMillis, pendingIntent)
             alarmManager.setAlarmClock(alarmInfo, pendingIntent)
-
-            Log.d("ALARM_SET", "Alarm $jenis SUKSES dipasang untuk: ${calendar.time}")
         } catch (e: Exception) { e.printStackTrace() }
     }
 }
